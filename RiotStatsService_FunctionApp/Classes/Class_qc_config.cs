@@ -23,9 +23,37 @@ namespace RiotStatsService_FunctionApp.Classes
     {
         public string label { get; set; }
         public double[] data { get; set; }
-        public string[] backgroundColor { get; set; }
-        public string[] borderColor { get; set; }
         public int borderWidth { get; set; }
+        public double lineTension { get; set; }
     }
 
+    public class Options
+    {
+        public bool responsive { get; set; }
+        public Title title { get; set; }
+        public Scales scales { get; set; }
+    }
+
+    public class Scales
+    {
+        public List<YAxis> yAxes { get; set; }
+    }
+
+    public class Ticks
+    {
+        public int suggestedMin { get; set; }
+        public int suggestedMax { get; set; }
+        //public bool beginAtZero { get; set; }
+    }
+
+    public class Title
+    {
+        public bool display { get; set; }
+        public string text { get; set; }
+    }
+
+    public class YAxis
+    {
+        public Ticks ticks { get; set; }
+    }
 }
