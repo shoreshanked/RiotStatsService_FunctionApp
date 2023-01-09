@@ -56,8 +56,8 @@ namespace RiotStatsService_FunctionApp
         public void setDict(ILogger log)
         {
             mostKillsAllTime.Add("Up the Ashe", 36.0);
-            mostAssistsAllTime.Add("The Master Queef", 51.0);
-            mostDeathsAllTime.Add("Up the Ashe", 15.0);
+            mostAssistsAllTime.Add("Up the Ashe", 51.0);
+            mostDeathsAllTime.Add("The Master Queef", 16.0);
             log.LogInformation("Initialising all time stats on first run\n");
         }
 

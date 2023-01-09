@@ -9,7 +9,7 @@ namespace RiotStatsService_FunctionApp
     public class ChartFunction
     {
         [FunctionName("ChartFunction")]
-        public void Run([TimerTrigger("0 30 16 * * MON")]TimerInfo myTimer, ILogger log)
+        public void Run([TimerTrigger("0 30 16 * * *")]TimerInfo myTimer, ILogger log)
         {
             log.LogInformation($"C# Timer trigger function ChartFunction executed at: {DateTime.Now}");
 
