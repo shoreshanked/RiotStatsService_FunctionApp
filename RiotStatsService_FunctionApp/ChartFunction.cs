@@ -13,6 +13,7 @@ namespace RiotStatsService_FunctionApp
         {
             log.LogInformation($"C# Timer trigger function ChartFunction executed at: {DateTime.Now}");
 
+            log.LogInformation("Calling sendDiscMessage method override for ChartURL");
             DiscordController.sendDiscMessage(chartURL, log);
         }
     }

@@ -7,14 +7,22 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using static System.Net.Mime.MediaTypeNames;
+using static RiotStatsService_FunctionApp.Function1;
 
 namespace RiotStatsService_FunctionApp
 {
     class DiscordController
     {
+        public static string URL = "";
+        public static void SetDiscordWebHook()
+        {
+            if (isTest){URL = Environment.GetEnvironmentVariable("TestDiscordWebhook");}
+            else{URL = Environment.GetEnvironmentVariable("DiscordWebhook");}
+        }
+        
         public static void sendDiscWebhookMessage(string message, ILogger log)
         {
-            var URL = Environment.GetEnvironmentVariable("DiscordWebhook");
+            SetDiscordWebHook();
             HttpClient postWebhook = new HttpClient();
 
             log.LogInformation("Sending Discord webhook");
@@ -41,7 +49,8 @@ namespace RiotStatsService_FunctionApp
 
         public static void sendDiscWebhookChart(string chartURL, ILogger log)
         {
-            var URL = Environment.GetEnvironmentVariable("DiscordWebhook");
+            // Dynamically sets the discord web hook location
+            SetDiscordWebHook();
             HttpClient postWebhook = new HttpClient();
 
             log.LogInformation("Sending Discord webhook");

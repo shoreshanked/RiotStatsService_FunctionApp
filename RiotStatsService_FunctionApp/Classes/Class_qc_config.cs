@@ -10,6 +10,7 @@ namespace RiotStatsService_FunctionApp.Classes
     {
         public string type { get; set; }
         public Data data { get; set; }
+        public Options options { get; set; }
     }
 
     public class Data

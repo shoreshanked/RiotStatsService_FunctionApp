@@ -15,6 +15,8 @@ namespace RiotStatsService_FunctionApp
         string allTimeStatsSet = Environment.GetEnvironmentVariable("AllTimeStatsSet");
         string storageConnectionString = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
         
+        public static bool isTest = true;
+
         Dictionary<string, List<string>> matchIdDictionary = new Dictionary<string, List<string>>();
         Dictionary<string, List<MatchDataModel>> matchDataDictionary = new Dictionary<string, List<MatchDataModel>>();
         Dictionary<string, KdaTotalsModel> kdaResultsDictionary = new Dictionary<string, KdaTotalsModel>();
@@ -30,6 +32,7 @@ namespace RiotStatsService_FunctionApp
         
         Dictionary<string, double> combinedKillsOneGame = new Dictionary<string, double>();
 
+        //Variables for chart building
         Dictionary<string, List<double>> chartData = new Dictionary<string, List<double>>();
         public static string chartURL = "";
 
@@ -48,6 +51,7 @@ namespace RiotStatsService_FunctionApp
         List<KdaModel> kdaModelList = new List<KdaModel>();
         List<string> matchIdList = new List<string>();
         List<double> kdaRankingList = new List<double>();
+
         
         public void setDict(ILogger log)
         {
@@ -58,7 +62,8 @@ namespace RiotStatsService_FunctionApp
         }
 
         [FunctionName("Function1")]
-        public void Run([TimerTrigger("0 0 16 * * *")]TimerInfo myTimer, ILogger log)
+        //public void Run([TimerTrigger("* * * * * *")]TimerInfo myTimer, ILogger log) // Dev
+        public void Run([TimerTrigger("0 0 16 * * *")] TimerInfo myTimer, ILogger log) //Live
         {
             log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
     
@@ -124,8 +129,15 @@ namespace RiotStatsService_FunctionApp
             log.LogInformation("Calling CompareMostDeaths Method");
             Calculations.CompareMostDeaths(mostDeathsIn10Games, mostDeathsAllTime, log);
 
+            
+            log.LogInformation("Calling InitChartData Method");
+            chartURL = ChartBuilder.InitChartData(chartData, kdaResultsDictionary, log);
+            log.LogInformation("Chart URL: {0}", chartURL);
 
-            chartURL = ChartBuilder.InitChartData(chartData, kdaResultsDictionary);
+            //testing chart builder - superceded by azure function and needs to be commented out when live
+            //DiscordController.sendDiscMessage(chartURL, log);
+
+            log.LogInformation("Calling sendDiscMessage Method");
             DiscordController.sendDiscMessage(kdaResultsDictionary, kdaRankingList, mostKillsIn10Games, combinedKillsOneGame, mostKillsAllTime, mostAssistsAllTime, mostDeathsAllTime, log);
 
             //Clear all objects to prevent memory leaks
