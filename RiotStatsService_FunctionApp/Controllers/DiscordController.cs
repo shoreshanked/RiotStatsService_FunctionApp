@@ -14,18 +14,25 @@ namespace RiotStatsService_FunctionApp
     class DiscordController
     {
         public static string URL = "";
-        public static void SetDiscordWebHook()
+        public static void SetDiscordWebHook(ILogger log)
         {
-            if (isTest){URL = Environment.GetEnvironmentVariable("TestDiscordWebhook");}
-            else{URL = Environment.GetEnvironmentVariable("DiscordWebhook");}
+            if (isTest){
+                log.LogInformation("Assigning TEST URL as webhook");
+                URL = Environment.GetEnvironmentVariable("TestDiscordWebhook");
+            }
+            else{
+                log.LogInformation("Assigning LIVE URL as webhook");
+                URL = Environment.GetEnvironmentVariable("DiscordWebhook");
+            }
         }
         
         public static void sendDiscWebhookMessage(string message, ILogger log)
         {
-            SetDiscordWebHook();
+            SetDiscordWebHook(log);
+            
             HttpClient postWebhook = new HttpClient();
 
-            log.LogInformation("Sending Discord webhook");
+            log.LogInformation("Sending Discord webhook (message) using: " + URL);
 
             try
             {
@@ -35,7 +42,7 @@ namespace RiotStatsService_FunctionApp
                     new KeyValuePair<string, string>("username", "Stats Bot"),
                     new KeyValuePair<string, string>("content", message),
                 };
-                
+
                 FormUrlEncodedContent content = new FormUrlEncodedContent(values);
                 var result = postWebhook.PostAsync(URL, content);
             }
@@ -50,10 +57,10 @@ namespace RiotStatsService_FunctionApp
         public static void sendDiscWebhookChart(string chartURL, ILogger log)
         {
             // Dynamically sets the discord web hook location
-            SetDiscordWebHook();
+            SetDiscordWebHook(log);
             HttpClient postWebhook = new HttpClient();
 
-            log.LogInformation("Sending Discord webhook");
+            log.LogInformation("Sending Discord webhook (chart) using: " + URL);
 
             try
             {

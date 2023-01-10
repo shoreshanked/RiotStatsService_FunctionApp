@@ -15,7 +15,7 @@ namespace RiotStatsService_FunctionApp
         string allTimeStatsSet = Environment.GetEnvironmentVariable("AllTimeStatsSet");
         string storageConnectionString = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
         
-        public static bool isTest = true;
+        public static bool isTest = false;
 
         Dictionary<string, List<string>> matchIdDictionary = new Dictionary<string, List<string>>();
         Dictionary<string, List<MatchDataModel>> matchDataDictionary = new Dictionary<string, List<MatchDataModel>>();
