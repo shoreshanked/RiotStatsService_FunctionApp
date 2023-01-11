@@ -22,17 +22,19 @@ namespace RiotStatsService_FunctionApp
     {
 
         public static string containerName = Environment.GetEnvironmentVariable("ContainerName");
-        public static string path = "C:\\Storage\\vars.json";
+        public static string path = "\\Storage\\vars.json";
         public static string storageConnectionString = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
 
         public static BlobServiceClient blobServiceClient = new BlobServiceClient(storageConnectionString);
+        public static BlobContainerClient doesStorageExist = new BlobContainerClient(storageConnectionString, containerName);
+
         public static Highscores LoadFromStorage(ILogger log)
         {
             log.LogInformation("Retreiving container from blob storage");
-            var blobContainerClient = GetContainer(blobServiceClient, containerName);
+            var blobContainerClient = GetContainer(blobServiceClient, containerName, log);
 
             log.LogInformation("Calling GetBlobClient method and assigning to variable");
-            var blobClient = blobContainerClient.GetBlobClient("C:/Storage/vars.json");
+            var blobClient = blobContainerClient.GetBlobClient("/vars.json");
 
             log.LogInformation("Downloading blob content to a stream");
             var blobContent = blobClient.DownloadContent().Value.Content;
@@ -49,9 +51,17 @@ namespace RiotStatsService_FunctionApp
         {
             //Does a previous container exist
             log.LogInformation("Retreiving container from blob storage to see if it exists");
-            var doesStorageExist = GetContainer(blobServiceClient, containerName);
+
+            try
+            {
+                doesStorageExist = GetContainer(blobServiceClient, containerName, log);
+            }
+            catch(Exception e)
+            {
+                log.LogError("Exception thrown: " + e.Message);
+            }
             
-            if (doesStorageExist.Name == null)
+            if (doesStorageExist == null)
             {
                 return false;
             }
@@ -61,77 +71,51 @@ namespace RiotStatsService_FunctionApp
             }
         }
 
-        public static async void UpdateCreateStorage(Highscores updatedHighscores, bool storageExists, ILogger log)
+        public static void UpdateCreateStorage(Highscores updatedHighscores, bool storageExists, ILogger log)
         {
             if (storageExists)
             {
                 log.LogInformation("Storage has been found, updating storage via method override");
-                StoreVars(updatedHighscores, log);
+                StoreVars(updatedHighscores, log, true);
+                log.LogError("updatecreate storage WOOOOOP");
             }
             else
             {
                 log.LogInformation("Storage has not been found, creating new storage");
-                await CreateContainerAsync(blobServiceClient, containerName);
-                StoreVars(log);
+                CreateContainerAsync(blobServiceClient, containerName);
+                StoreVars(updatedHighscores, log, false);
             }
         }
 
-
-        public static void StoreVars(ILogger log)
+        public static void StoreVars(Highscores updatedHighscores, ILogger log, bool deleteOldBlob)
         {
-            var _path = path.Replace("\\vars.json", "");
-            var files = Directory.GetFiles(_path, "*", SearchOption.AllDirectories);
-            BlobContainerClient containerClient = new BlobContainerClient(storageConnectionString, containerName);
+            log.LogInformation("Creating container");
+            var blobContainerClient = GetContainer(blobServiceClient, containerName, log);
 
-            foreach (var file in files)
+            log.LogInformation("Creating blob client");
+            var blobClient = blobContainerClient.GetBlobClient("/vars.json");
+
+            log.LogInformation("Creating blob content");
+            var blobContent = JsonSerializer.Serialize(updatedHighscores);
+
+            log.LogInformation("Uploading blob content");
+            if (deleteOldBlob)
             {
-                var filePathOverCloud = file.Replace(path, "").Replace("\\", "");
-                using (MemoryStream stream = new MemoryStream(File.ReadAllBytes(file)))
-                {
-                    log.LogInformation("Creating first blob");
-                    containerClient.UploadBlob(file, stream);
-                }
+                blobClient.Delete();
             }
-
+            blobClient.Upload(new MemoryStream(Encoding.UTF8.GetBytes(blobContent)));
         }
 
-        public static void StoreVars(Highscores updatedHighscores, ILogger log)
-        {
-            var updatedJson = JsonSerializer.Serialize(updatedHighscores);
-            var ts = new FileStream(path, FileMode.Truncate, FileAccess.Write);
-            ts.Close();
-            var fs = new FileStream(path, FileMode.Append, FileAccess.Write);
-            var sw = new StreamWriter(fs);
-            sw.WriteLine(updatedJson);
-            sw.Flush();
-            sw.Close();
-            fs.Close();
-
-            var _path = path.Replace("\\vars.json", "");
-            var files = Directory.GetFiles(_path, "*", SearchOption.AllDirectories);
-            BlobContainerClient containerClient = new BlobContainerClient(storageConnectionString, containerName);
-
-            foreach (var file in files)
-            {
-                var filePathOverCloud = file.Replace(path, "").Replace("\\", "");
-                using (MemoryStream stream = new MemoryStream(File.ReadAllBytes(file)))
-                {
-                    log.LogInformation("Deleting original blob");
-                    containerClient.DeleteBlob(file);
-                    log.LogInformation("Creating new blob with updates");
-                    containerClient.UploadBlob(file, stream);
-                }
-            }
-
-        }
-        public static BlobContainerClient GetContainer(BlobServiceClient blobServiceClient, string containerName)
+        public static BlobContainerClient GetContainer(BlobServiceClient blobServiceClient, string containerName, ILogger log)
         {
             try
             {
+                log.LogInformation("Calling GetBlobContainerClient method and assigning to variable");
                 BlobContainerClient blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName);
-                
+
                 if (blobContainerClient.Exists())
                 {
+                    log.LogInformation("blob exists, return blob: " + blobContainerClient.Name);
                     return blobContainerClient;
                 }
             }

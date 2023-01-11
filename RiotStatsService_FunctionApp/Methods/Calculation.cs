@@ -18,21 +18,31 @@ namespace RiotStatsService_FunctionApp
             {
                 foreach (var puuidMatchSet in matchDataDictionary)
                 {
+                    Thread.Sleep(500);
                     foreach (var match in puuidMatchSet.Value)
                     {
                         foreach (var participant in match.Info.Participants)
                         {
-                            log.LogInformation("Getting KDA for {0}", participant.Puuid);
-                            if (participant.Puuid == puuidMatchSet.Key)
+                            try
                             {
-                                var kdaModel = new KdaModel();
-                                kdaModel.assists = participant.Assists;
-                                kdaModel.deaths = participant.Deaths;
-                                kdaModel.kills = participant.Kills;
-                                kdaModel.name = participant.SummonerName;
-                                kdaModel.puuid = participant.Puuid;
-                                kdaModelList.Add(kdaModel);
+                                log.LogInformation("Getting KDA for {0}", participant.Puuid);
+                                if (participant.Puuid == puuidMatchSet.Key)
+                                {
+                                    var kdaModel = new KdaModel();
+                                    kdaModel.assists = participant.Assists;
+                                    kdaModel.deaths = participant.Deaths;
+                                    kdaModel.kills = participant.Kills;
+                                    kdaModel.name = participant.SummonerName;
+                                    kdaModel.puuid = participant.Puuid;
+                                    kdaModelList.Add(kdaModel);
+                                }
                             }
+                            catch (Exception ex)
+                            {
+                                log.LogError("Error getting KDA for {0}", participant.Puuid);
+                                log.LogError(ex.Message);
+                            }
+
                         }
                     }
                 }

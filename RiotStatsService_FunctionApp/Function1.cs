@@ -55,7 +55,8 @@ namespace RiotStatsService_FunctionApp
             "The Rum Ham",
             "Ninjahobo"
         };
-        
+
+
         List<string> summonerPuuidList = new List<string>();
         List<KdaModel> kdaModelList = new List<KdaModel>();
         List<string> matchIdList = new List<string>();
@@ -75,7 +76,7 @@ namespace RiotStatsService_FunctionApp
                 log.LogInformation("Storage has been found in azure blob storage");
                 log.LogInformation("Calling Load from storage method");
                 var highscores = LoadFromStorage(log);
-
+      
                 log.LogInformation("Adding to high score dictionaries from highscores object");
                 mostKillsAllTime.Add(highscores.mostKillsAllTime.Summoner, highscores.mostKillsAllTime.Count);
                 mostAssistsAllTime.Add(highscores.mostAssistsAllTime.Summoner, highscores.mostAssistsAllTime.Count);
@@ -150,9 +151,7 @@ namespace RiotStatsService_FunctionApp
             //testing chart builder - superceded by azure function and needs to be commented out when live
             //DiscordController.sendDiscMessage(chartURL, log);
 
-            log.LogInformation("Calling sendDiscMessage Method");
-            DiscordController.sendDiscMessage(kdaResultsDictionary, kdaRankingList, mostKillsIn10Games, combinedKillsOneGame, mostKillsAllTime, mostAssistsAllTime, mostDeathsAllTime, log);
-
+            
             log.LogInformation("Creating updated highscores model");
             Highscores updatedHighscores = new Highscores() { mostAssistsAllTime = new MostAssistsAllTime(), mostDeathsAllTime = new MostDeathsAllTime(), mostKillsAllTime = new MostKillsAllTime() };
             updatedHighscores.mostKillsAllTime.Summoner = mostKillsAllTime.Keys.First();
@@ -164,6 +163,9 @@ namespace RiotStatsService_FunctionApp
 
             log.LogInformation("Calling UpdateCreateStorage Method");
             AzureBlobController.UpdateCreateStorage(updatedHighscores, storageExists, log);
+
+            log.LogInformation("Calling sendDiscMessage Method");
+            DiscordController.sendDiscMessage(kdaResultsDictionary, kdaRankingList, mostKillsIn10Games, combinedKillsOneGame, mostKillsAllTime, mostAssistsAllTime, mostDeathsAllTime, log);
 
             //Clear all objects to prevent memory leaks
             log.LogInformation("Clearing all objects");
