@@ -13,16 +13,16 @@ namespace RiotStatsService_FunctionApp
 {
     class DiscordController
     {
-        public static string URL = "";
+        public static string webhook = "";
         public static void SetDiscordWebHook(ILogger log)
         {
             if (isTest){
                 log.LogInformation("Assigning TEST URL as webhook");
-                URL = Environment.GetEnvironmentVariable("TestDiscordWebhook");
+                webhook = Environment.GetEnvironmentVariable("TestDiscordWebhook");
             }
             else{
                 log.LogInformation("Assigning LIVE URL as webhook");
-                URL = Environment.GetEnvironmentVariable("DiscordWebhook");
+                webhook = Environment.GetEnvironmentVariable("DiscordWebhook");
             }
         }
         
@@ -32,7 +32,7 @@ namespace RiotStatsService_FunctionApp
             
             HttpClient postWebhook = new HttpClient();
 
-            log.LogInformation("Sending Discord webhook (message) using: " + URL);
+            log.LogInformation("Sending Discord webhook (message) using: " + webhook);
 
             try
             {
@@ -44,7 +44,7 @@ namespace RiotStatsService_FunctionApp
                 };
 
                 FormUrlEncodedContent content = new FormUrlEncodedContent(values);
-                var result = postWebhook.PostAsync(URL, content);
+                var result = postWebhook.PostAsync(webhook, content);
             }
             catch (AggregateException ex)
             {
@@ -60,7 +60,7 @@ namespace RiotStatsService_FunctionApp
             SetDiscordWebHook(log);
             HttpClient postWebhook = new HttpClient();
 
-            log.LogInformation("Sending Discord webhook (chart) using: " + URL);
+            log.LogInformation("Sending Discord webhook (chart) using: " + webhook);
 
             try
             {
@@ -72,7 +72,7 @@ namespace RiotStatsService_FunctionApp
                 };
 
                 FormUrlEncodedContent content = new FormUrlEncodedContent(values);
-                var result = postWebhook.PostAsync(URL, content);
+                var result = postWebhook.PostAsync(webhook, content);
             }
             catch (AggregateException ex)
             {

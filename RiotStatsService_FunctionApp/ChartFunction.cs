@@ -8,6 +8,8 @@ namespace RiotStatsService_FunctionApp
 {
     public class ChartFunction
     {
+        public static string chartURL = "";
+        
         [FunctionName("ChartFunction")]
         public void Run([TimerTrigger("0 30 16 * * *")]TimerInfo myTimer, ILogger log)
         {

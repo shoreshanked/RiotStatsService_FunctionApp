@@ -1,9 +1,18 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
+using Azure;
+using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
 using RestSharp;
+using static RiotStatsService_FunctionApp.ChartFunction;
+using static RiotStatsService_FunctionApp.AzureBlobController;
+using System.Xml.Linq;
+using System.Text.Json;
+using System.Linq;
 
 namespace RiotStatsService_FunctionApp
 { 
@@ -13,10 +22,10 @@ namespace RiotStatsService_FunctionApp
         RestClient clientRegion = new RestClient("https://europe.api.riotgames.com");
         string apiToken = Environment.GetEnvironmentVariable("RiotGamesAPIKey");
         string allTimeStatsSet = Environment.GetEnvironmentVariable("AllTimeStatsSet");
-        string storageConnectionString = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
         
         public static bool isTest = false;
-
+        public static bool storageExists;
+        
         Dictionary<string, List<string>> matchIdDictionary = new Dictionary<string, List<string>>();
         Dictionary<string, List<MatchDataModel>> matchDataDictionary = new Dictionary<string, List<MatchDataModel>>();
         Dictionary<string, KdaTotalsModel> kdaResultsDictionary = new Dictionary<string, KdaTotalsModel>();
@@ -34,7 +43,7 @@ namespace RiotStatsService_FunctionApp
 
         //Variables for chart building
         Dictionary<string, List<double>> chartData = new Dictionary<string, List<double>>();
-        public static string chartURL = "";
+        //public static string chartURL = "";
 
         //List Variables
         List<string> summonerList = new List<string>()
@@ -52,28 +61,32 @@ namespace RiotStatsService_FunctionApp
         List<string> matchIdList = new List<string>();
         List<double> kdaRankingList = new List<double>();
 
-        
-        public void setDict(ILogger log)
-        {
-            mostKillsAllTime.Add("Up the Ashe", 36.0);
-            mostAssistsAllTime.Add("Up the Ashe", 51.0);
-            mostDeathsAllTime.Add("The Master Queef", 16.0);
-            log.LogInformation("Initialising all time stats on first run\n");
-        }
 
         [FunctionName("Function1")]
-        //public void Run([TimerTrigger("* * * * * *")]TimerInfo myTimer, ILogger log) // Dev
-        public void Run([TimerTrigger("0 0 16 * * *")] TimerInfo myTimer, ILogger log) //Live
+        public void Run([TimerTrigger("* * * * * *")]TimerInfo myTimer, ILogger log) // Dev
+        //public void Run([TimerTrigger("0 0 16 * * *")] TimerInfo myTimer, ILogger log) //Live
         {
             log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
-    
-            if (allTimeStatsSet == "false")
+
+            storageExists = AzureBlobController.CheckStorageExists(log);
+
+            if (storageExists)
             {
-                setDict(log);
-                Environment.SetEnvironmentVariable("AllTimeStatsSet", "true");
-                log.LogInformation("Updating AllTimeStatsSet environment variable to true\n");
+                log.LogInformation("Storage has been found in azure blob storage");
+                log.LogInformation("Calling Load from storage method");
+                var highscores = LoadFromStorage(log);
+
+                log.LogInformation("Adding to high score dictionaries from highscores object");
+                mostKillsAllTime.Add(highscores.mostKillsAllTime.Summoner, highscores.mostKillsAllTime.Count);
+                mostAssistsAllTime.Add(highscores.mostAssistsAllTime.Summoner, highscores.mostAssistsAllTime.Count);
+                mostDeathsAllTime.Add(highscores.mostDeathsAllTime.Summoner, highscores.mostDeathsAllTime.Count);
             }
-                
+            else
+            {
+                log.LogInformation("Storage has not been found in azure blob storage");
+            }
+
+          
             //Summoner info passed back to a dictionary for use later
             summonerResponseDict = SummonerController.getSummonerPuuid(summonerList, apiToken, client, log);
 
@@ -131,14 +144,26 @@ namespace RiotStatsService_FunctionApp
 
             
             log.LogInformation("Calling InitChartData Method");
-            chartURL = ChartBuilder.InitChartData(chartData, kdaResultsDictionary, log);
+            ChartFunction.chartURL = ChartBuilder.InitChartData(chartData, kdaResultsDictionary, log);
             log.LogInformation("Chart URL: {0}", chartURL);
-
+            
             //testing chart builder - superceded by azure function and needs to be commented out when live
             //DiscordController.sendDiscMessage(chartURL, log);
 
             log.LogInformation("Calling sendDiscMessage Method");
             DiscordController.sendDiscMessage(kdaResultsDictionary, kdaRankingList, mostKillsIn10Games, combinedKillsOneGame, mostKillsAllTime, mostAssistsAllTime, mostDeathsAllTime, log);
+
+            log.LogInformation("Creating updated highscores model");
+            Highscores updatedHighscores = new Highscores() { mostAssistsAllTime = new MostAssistsAllTime(), mostDeathsAllTime = new MostDeathsAllTime(), mostKillsAllTime = new MostKillsAllTime() };
+            updatedHighscores.mostKillsAllTime.Summoner = mostKillsAllTime.Keys.First();
+            updatedHighscores.mostKillsAllTime.Count = mostKillsAllTime.Values.First();
+            updatedHighscores.mostAssistsAllTime.Summoner = mostAssistsAllTime.Keys.First();
+            updatedHighscores.mostAssistsAllTime.Count = mostAssistsAllTime.Values.First();
+            updatedHighscores.mostDeathsAllTime.Summoner = mostDeathsAllTime.Keys.First();
+            updatedHighscores.mostDeathsAllTime.Count = mostDeathsAllTime.Values.First();
+
+            log.LogInformation("Calling UpdateCreateStorage Method");
+            AzureBlobController.UpdateCreateStorage(updatedHighscores, storageExists, log);
 
             //Clear all objects to prevent memory leaks
             log.LogInformation("Clearing all objects");
