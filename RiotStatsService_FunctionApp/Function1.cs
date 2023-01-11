@@ -63,8 +63,8 @@ namespace RiotStatsService_FunctionApp
 
 
         [FunctionName("Function1")]
-        public void Run([TimerTrigger("* * * * * *")]TimerInfo myTimer, ILogger log) // Dev
-        //public void Run([TimerTrigger("0 0 16 * * *")] TimerInfo myTimer, ILogger log) //Live
+        //public void Run([TimerTrigger("* * * * * *")]TimerInfo myTimer, ILogger log) // Dev
+        public void Run([TimerTrigger("0 0 16 * * *")] TimerInfo myTimer, ILogger log) //Live
         {
             log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
 
