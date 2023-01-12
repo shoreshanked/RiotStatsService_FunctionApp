@@ -24,8 +24,9 @@ namespace RiotStatsService_FunctionApp
         string allTimeStatsSet = Environment.GetEnvironmentVariable("AllTimeStatsSet");
         
         public static bool isTest = false;
-        public static bool storageExists;
-        
+        private static bool containerStorageExists;
+        public static bool blobHighScoreExists;
+
         Dictionary<string, List<string>> matchIdDictionary = new Dictionary<string, List<string>>();
         Dictionary<string, List<MatchDataModel>> matchDataDictionary = new Dictionary<string, List<MatchDataModel>>();
         Dictionary<string, KdaTotalsModel> kdaResultsDictionary = new Dictionary<string, KdaTotalsModel>();
@@ -56,6 +57,10 @@ namespace RiotStatsService_FunctionApp
             "Ninjahobo"
         };
 
+        //List<string> summonerList = new List<string>()
+        //{
+        //    "Rick n Two Crows"
+        //};
 
         List<string> summonerPuuidList = new List<string>();
         List<KdaModel> kdaModelList = new List<KdaModel>();
@@ -69,14 +74,20 @@ namespace RiotStatsService_FunctionApp
         {
             log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
 
-            storageExists = AzureBlobController.CheckStorageExists(log);
-
-            if (storageExists)
+            // this only checks whether a container exists with the correct name 
+            containerStorageExists = AzureBlobController.CheckContainerStorageExists(log);
+            blobHighScoreExists = CheckBlobExists(log, "vars.json");
+            
+            if (containerStorageExists && blobHighScoreExists)
             {
-                log.LogInformation("Storage has been found in azure blob storage");
-                log.LogInformation("Calling Load from storage method");
-                var highscores = LoadFromStorage(log);
-      
+                log.LogInformation("Existing Container & Blob have been found in azure blob storage");
+                log.LogInformation("Calling LoadFromStorage method");
+                var blobContent = LoadFromStorage(log, "vars.json");
+                
+                Highscores highscores = new Highscores();
+                log.LogInformation("Deserializing blob content to Highscores object");
+                highscores = JsonSerializer.Deserialize<Highscores>(blobContent);
+
                 log.LogInformation("Adding to high score dictionaries from highscores object");
                 mostKillsAllTime.Add(highscores.mostKillsAllTime.Summoner, highscores.mostKillsAllTime.Count);
                 mostAssistsAllTime.Add(highscores.mostAssistsAllTime.Summoner, highscores.mostAssistsAllTime.Count);
@@ -146,6 +157,7 @@ namespace RiotStatsService_FunctionApp
             
             log.LogInformation("Calling InitChartData Method");
             ChartFunction.chartURL = ChartBuilder.InitChartData(chartData, kdaResultsDictionary, log);
+            
             log.LogInformation("Chart URL: {0}", chartURL);
             
             //testing chart builder - superceded by azure function and needs to be commented out when live
@@ -162,8 +174,9 @@ namespace RiotStatsService_FunctionApp
             updatedHighscores.mostDeathsAllTime.Count = mostDeathsAllTime.Values.First();
 
             log.LogInformation("Calling UpdateCreateStorage Method");
-            AzureBlobController.UpdateCreateStorage(updatedHighscores, storageExists, log);
-
+            AzureBlobController.UpdateCreateStorage(updatedHighscores, containerStorageExists, blobHighScoreExists, log);
+            AzureBlobController.StoreChart(ChartFunction.chartURL, log);
+            
             log.LogInformation("Calling sendDiscMessage Method");
             DiscordController.sendDiscMessage(kdaResultsDictionary, kdaRankingList, mostKillsIn10Games, combinedKillsOneGame, mostKillsAllTime, mostAssistsAllTime, mostDeathsAllTime, log);
 

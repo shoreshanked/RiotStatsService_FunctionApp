@@ -15,6 +15,7 @@ using System.Reflection.Metadata;
 using Azure.Storage.Blobs.Specialized;
 using static System.Net.WebRequestMethods;
 using File = System.IO.File;
+using Azure.Storage.Blobs.Models;
 
 namespace RiotStatsService_FunctionApp
 {
@@ -26,42 +27,39 @@ namespace RiotStatsService_FunctionApp
         public static string storageConnectionString = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
 
         public static BlobServiceClient blobServiceClient = new BlobServiceClient(storageConnectionString);
-        public static BlobContainerClient doesStorageExist = new BlobContainerClient(storageConnectionString, containerName);
+        public static BlobContainerClient doesContainerStorageExist = new BlobContainerClient(storageConnectionString, containerName);
+        public static Pageable<BlobItem> blobs;
 
-        public static Highscores LoadFromStorage(ILogger log)
+        public static BinaryData LoadFromStorage(ILogger log, string blobName)
         {
             log.LogInformation("Retreiving container from blob storage");
             var blobContainerClient = GetContainer(blobServiceClient, containerName, log);
 
             log.LogInformation("Calling GetBlobClient method and assigning to variable");
-            var blobClient = blobContainerClient.GetBlobClient("/vars.json");
+            var blobClient = blobContainerClient.GetBlobClient(blobName);
 
             log.LogInformation("Downloading blob content to a stream");
             var blobContent = blobClient.DownloadContent().Value.Content;
-            
-            Highscores highscores = new Highscores();
-            log.LogInformation("Deserializing blob content to Highscores object");
-            highscores = JsonSerializer.Deserialize<Highscores>(blobContent);
-
-            log.LogInformation("Returning Highscores object");
-            return highscores;
+ 
+            log.LogInformation("Returning blobContent object");
+            return blobContent;
         }
         
-        public static bool CheckStorageExists(ILogger log)
+        public static bool CheckContainerStorageExists(ILogger log)
         {
             //Does a previous container exist
             log.LogInformation("Retreiving container from blob storage to see if it exists");
 
             try
             {
-                doesStorageExist = GetContainer(blobServiceClient, containerName, log);
+                doesContainerStorageExist = GetContainer(blobServiceClient, containerName, log);
             }
             catch(Exception e)
             {
                 log.LogError("Exception thrown: " + e.Message);
             }
-            
-            if (doesStorageExist == null)
+
+            if (doesContainerStorageExist == null)
             {
                 return false;
             }
@@ -71,25 +69,65 @@ namespace RiotStatsService_FunctionApp
             }
         }
 
-        public static void UpdateCreateStorage(Highscores updatedHighscores, bool storageExists, ILogger log)
+        public static bool CheckBlobExists(ILogger log, string blobName)
         {
-            if (storageExists)
+            //Does a previous container exist
+            log.LogInformation("Retreiving blob from container to see if it exists");
+            bool doesBlobExist = false;
+            try
+            {
+                blobs = doesContainerStorageExist.GetBlobs();
+            }
+            catch (Exception e)
+            {
+                log.LogError("Exception thrown: " + e.Message);
+            }
+
+            if (blobs == null)
+            {
+                doesBlobExist = false;
+            }
+            else
+            {
+                foreach (var blob in blobs)
+                {
+                    if (blob.Name == blobName)
+                    {
+                        doesBlobExist = true;
+                        log.LogInformation("blob exists, return blob: " + blob.Name);
+                    }
+                    else
+                    {
+                        doesBlobExist = false;
+                    }
+                    if (doesBlobExist == true)
+                    {
+                        break;
+                    }
+                }
+            }
+            return doesBlobExist;
+        }
+
+        public static void UpdateCreateStorage(Highscores updatedHighscores, bool containerExists, bool blobExists, ILogger log)
+        {
+            if (containerExists)
             {
                 log.LogInformation("Storage has been found, updating storage via method override");
-                StoreVars(updatedHighscores, log, true);
+                StoreVars(updatedHighscores, log);
                 log.LogError("updatecreate storage WOOOOOP");
             }
             else
             {
-                log.LogInformation("Storage has not been found, creating new storage");
+                log.LogInformation("Container Storage has not been found, creating new container");
                 CreateContainerAsync(blobServiceClient, containerName);
-                StoreVars(updatedHighscores, log, false);
+                StoreVars(updatedHighscores, log);
             }
         }
 
-        public static void StoreVars(Highscores updatedHighscores, ILogger log, bool deleteOldBlob)
+        public static void StoreVars(Highscores updatedHighscores, ILogger log)
         {
-            log.LogInformation("Creating container");
+            log.LogInformation("Getting container");
             var blobContainerClient = GetContainer(blobServiceClient, containerName, log);
 
             log.LogInformation("Creating blob client");
@@ -99,11 +137,24 @@ namespace RiotStatsService_FunctionApp
             var blobContent = JsonSerializer.Serialize(updatedHighscores);
 
             log.LogInformation("Uploading blob content");
-            if (deleteOldBlob)
-            {
-                blobClient.Delete();
-            }
-            blobClient.Upload(new MemoryStream(Encoding.UTF8.GetBytes(blobContent)));
+
+            blobClient.Upload(new MemoryStream(Encoding.UTF8.GetBytes(blobContent)), overwrite: true);
+        }
+
+        public static void StoreChart(string chartURL, ILogger log)
+        {
+            log.LogInformation("Getting container");
+            var blobContainerClient = GetContainer(blobServiceClient, containerName, log);
+
+            log.LogInformation("Creating blob client");
+            var blobClient = blobContainerClient.GetBlobClient("/chartURL.txt");
+
+            log.LogInformation("Creating blob content (chartURL)");
+            var blobContent = chartURL;
+
+            log.LogInformation("Uploading blob content (chartURL)");
+
+            blobClient.Upload(new MemoryStream(Encoding.UTF8.GetBytes(blobContent)), overwrite: true);
         }
 
         public static BlobContainerClient GetContainer(BlobServiceClient blobServiceClient, string containerName, ILogger log)
@@ -115,7 +166,7 @@ namespace RiotStatsService_FunctionApp
 
                 if (blobContainerClient.Exists())
                 {
-                    log.LogInformation("blob exists, return blob: " + blobContainerClient.Name);
+                    log.LogInformation("container exists, return container: " + blobContainerClient.Name);
                     return blobContainerClient;
                 }
             }
