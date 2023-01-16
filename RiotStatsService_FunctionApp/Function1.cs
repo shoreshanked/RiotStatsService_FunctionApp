@@ -23,7 +23,7 @@ namespace RiotStatsService_FunctionApp
         string apiToken = Environment.GetEnvironmentVariable("RiotGamesAPIKey");
         string allTimeStatsSet = Environment.GetEnvironmentVariable("AllTimeStatsSet");
         
-        public static bool isTest = false;
+        public static bool isTest = true;
         private static bool containerStorageExists;
         public static bool blobHighScoreExists;
 
@@ -59,7 +59,8 @@ namespace RiotStatsService_FunctionApp
 
         //List<string> summonerList = new List<string>()
         //{
-        //    "Rick n Two Crows"
+
+        //    "The Master Queef"
         //};
 
         List<string> summonerPuuidList = new List<string>();
@@ -69,7 +70,7 @@ namespace RiotStatsService_FunctionApp
 
 
         [FunctionName("Function1")]
-        //public void Run([TimerTrigger("* * * * * *")]TimerInfo myTimer, ILogger log) // Dev
+        //public void Run([TimerTrigger("0 0 16 * * 1")]TimerInfo myTimer, ILogger log) // Dev
         public void Run([TimerTrigger("0 0 16 * * *")] TimerInfo myTimer, ILogger log) //Live
         {
             log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
@@ -154,16 +155,7 @@ namespace RiotStatsService_FunctionApp
             log.LogInformation("Calling CompareMostDeaths Method");
             Calculations.CompareMostDeaths(mostDeathsIn10Games, mostDeathsAllTime, log);
 
-            
-            log.LogInformation("Calling InitChartData Method");
-            ChartFunction.chartURL = ChartBuilder.InitChartData(chartData, kdaResultsDictionary, log);
-            
-            log.LogInformation("Chart URL: {0}", chartURL);
-            
-            //testing chart builder - superceded by azure function and needs to be commented out when live
-            //DiscordController.sendDiscMessage(chartURL, log);
-
-            
+ 
             log.LogInformation("Creating updated highscores model");
             Highscores updatedHighscores = new Highscores() { mostAssistsAllTime = new MostAssistsAllTime(), mostDeathsAllTime = new MostDeathsAllTime(), mostKillsAllTime = new MostKillsAllTime() };
             updatedHighscores.mostKillsAllTime.Summoner = mostKillsAllTime.Keys.First();
@@ -175,8 +167,11 @@ namespace RiotStatsService_FunctionApp
 
             log.LogInformation("Calling UpdateCreateStorage Method");
             AzureBlobController.UpdateCreateStorage(updatedHighscores, containerStorageExists, blobHighScoreExists, log);
-            AzureBlobController.StoreChart(ChartFunction.chartURL, log);
-            
+            //AzureBlobController.StoreChart(ChartFunction.chartURL, log);
+
+            log.LogInformation("Calling InitChartData Method");
+            ChartBuilder.InitChartData(chartData, kdaResultsDictionary, log);
+
             log.LogInformation("Calling sendDiscMessage Method");
             DiscordController.sendDiscMessage(kdaResultsDictionary, kdaRankingList, mostKillsIn10Games, combinedKillsOneGame, mostKillsAllTime, mostAssistsAllTime, mostDeathsAllTime, log);
 

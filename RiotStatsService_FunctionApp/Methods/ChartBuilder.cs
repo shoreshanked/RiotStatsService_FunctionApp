@@ -9,12 +9,12 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using static RiotStatsService_FunctionApp.AzureBlobController;
 
 namespace RiotStatsService_FunctionApp
 {
     public class ChartBuilder
     {
-
         public static List<double> kdaChartList1 = new List<double>();
         public static List<double> kdaChartList2 = new List<double>();
         public static List<double> kdaChartList3 = new List<double>();
@@ -22,9 +22,56 @@ namespace RiotStatsService_FunctionApp
         public static List<double> kdaChartList5 = new List<double>();
         public static List<double> kdaChartList6 = new List<double>();
         public static string URL = "";
+        public static List<List<double>> kdaMasterList = new List<List<double>>();
 
-        public static string InitChartData(Dictionary<string, List<double>> chartData, Dictionary<string, KdaTotalsModel> kdaResultsDictionary, ILogger log)
+        public static void InitChartData(Dictionary<string, List<double>> chartData, Dictionary<string, KdaTotalsModel> kdaResultsDictionary, ILogger log)
         {
+            //check storage exists already
+            var containerStorageExists = AzureBlobController.CheckContainerStorageExists(log);
+            var blobChartListExists = CheckBlobExists(log, "chartListData.json");
+            
+            if (containerStorageExists && blobChartListExists)
+            {
+                // if storage exists then deseralize the data and add to the player lists
+                var _chartDataLists = LoadFromStorage(log, "chartListData.json");
+                var chartDataLists = JsonSerializer.Deserialize<List<List<double>>>(_chartDataLists);
+                kdaChartList1 = chartDataLists[0];
+                kdaChartList2 = chartDataLists[1];
+                kdaChartList3 = chartDataLists[2];
+                kdaChartList4 = chartDataLists[3];
+                kdaChartList5 = chartDataLists[4];
+                kdaChartList6 = chartDataLists[5];
+            }
+
+            #region Test Data
+            // TEST DATA TO TEST SAVING TO BLOB
+            //kdaResultsDictionary.Clear();
+            //KdaTotalsModel kdaTotalsModel1 = new KdaTotalsModel();
+            //kdaTotalsModel1.averageKDA = 2.39;
+            //kdaResultsDictionary.Add("Rick n Two Crows", kdaTotalsModel1);
+
+            //KdaTotalsModel kdaTotalsModel2 = new KdaTotalsModel();
+            //kdaTotalsModel2.averageKDA = 3.0;
+            //kdaResultsDictionary.Add("The Master Queef", kdaTotalsModel2);
+
+            //KdaTotalsModel kdaTotalsModel3 = new KdaTotalsModel();
+            //kdaTotalsModel3.averageKDA = 3.36;
+            //kdaResultsDictionary.Add("Up the Ashe", kdaTotalsModel3);
+
+            //KdaTotalsModel kdaTotalsModel4 = new KdaTotalsModel();
+            //kdaTotalsModel4.averageKDA = 3.52;
+            //kdaResultsDictionary.Add("The Meshsiah", kdaTotalsModel4);
+
+            //KdaTotalsModel kdaTotalsModel5 = new KdaTotalsModel();
+            //kdaTotalsModel5.averageKDA = 3.68;
+            //kdaResultsDictionary.Add("The Rum Ham", kdaTotalsModel5);
+
+            //KdaTotalsModel kdaTotalsModel6 = new KdaTotalsModel();
+            //kdaTotalsModel6.averageKDA = 3.9;
+            //kdaResultsDictionary.Add("Ninjahobo", kdaTotalsModel6);
+            //// TEST DATA TO TEST SAVING TO BLOB 
+            #endregion
+
             foreach (var t in kdaResultsDictionary)
             {
                 //if the key doesnt exist then add the key and value to the chartData dictionary
@@ -32,8 +79,10 @@ namespace RiotStatsService_FunctionApp
                 {
                     case "Rick n Two Crows":
                         log.LogInformation("Adding Rick n Two Crows to chartData");
+                        // appends the next iteration of data to the playerlist
                         kdaChartList1.Add(t.Value.averageKDA);
                         if (!chartData.ContainsKey(t.Key)) { chartData.Add(t.Key, kdaChartList1); }
+                        //updates the chartData with the latest info
                         else { chartData[t.Key] = kdaChartList1; }
                         break;
                     case "The Master Queef":
@@ -68,22 +117,33 @@ namespace RiotStatsService_FunctionApp
                         break;
                 }
             }
-            log.LogInformation("Calling BuildChart");
-            BuildChart(chartData, log);
+            // update the master list to be saved back into azure blob storage
+            kdaMasterList.Add(kdaChartList1);
+            kdaMasterList.Add(kdaChartList2);
+            kdaMasterList.Add(kdaChartList3);
+            kdaMasterList.Add(kdaChartList4);
+            kdaMasterList.Add(kdaChartList5);
+            kdaMasterList.Add(kdaChartList6);
 
-            log.LogInformation("Returning URL");
-            return URL;
+            // upload to blob storage
+            StoreChartLists(kdaMasterList, log);
+
+            if(containerStorageExists)
+            {
+                //upload chartData to blob storage
+                StoreChartData(chartData, log);
+            }  
         }
 
-        public static void BuildChart(Dictionary<string, List<double>> chartData, ILogger log)
+        public static string BuildChart(Dictionary<string, List<double>> chartData, int labelCount, ILogger log)
         {
             Chart qc = new Chart();
 
             qc.Width = 1920;
             qc.Height = 1080;
-
+            
             List<string> labelList = new List<string>();
-            for (int count = 0; count < kdaChartList1.Count(); count++)
+            for (int count = 0; count < labelCount; count++)
             {
                 string label = string.Format("Week {0}", (count + 1).ToString());
                 labelList.Add(label);
@@ -100,7 +160,8 @@ namespace RiotStatsService_FunctionApp
                 qc_dataset.label = c.Key;
                 qc_dataset.data = c.Value.ToArray();
                 qc_dataset.lineTension = 0.2;
-                qc_dataset.borderWidth = 2;
+                qc_dataset.borderWidth = 4;
+                qc_dataset.backgroundColor = "rgba(0,0,0,0)";
                 qc_datasets.Add(qc_dataset);
             }
 
@@ -120,8 +181,8 @@ namespace RiotStatsService_FunctionApp
             qc_title.display = true;
             qc_title.text = "Test Title - does this work?";
 
-            qc_ticks.suggestedMin = 5;
-            qc_ticks.suggestedMax = 3;
+            qc_ticks.suggestedMin = 0;
+            qc_ticks.suggestedMax = 10;
             //qc_ticks.beginAtZero = false;
             
             qc_yaxis.ticks = qc_ticks;
@@ -142,6 +203,8 @@ namespace RiotStatsService_FunctionApp
             // Get the URL
             log.LogInformation("Calling GetURL Method");
             URL = (qc.GetUrl());
+
+            return URL;
         }
     }
 }

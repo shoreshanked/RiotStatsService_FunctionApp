@@ -4,6 +4,9 @@ using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
 using static RiotStatsService_FunctionApp.Function1;
 using static RiotStatsService_FunctionApp.AzureBlobController;
+using System.Text.Json;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace RiotStatsService_FunctionApp
 {
@@ -11,24 +14,34 @@ namespace RiotStatsService_FunctionApp
     {
         public static string chartURL = "";
         public static bool blobChartUrlExists;
+        public static bool blobChartDataExists;
         private static bool containerStorageExists;
         
         [FunctionName("ChartFunction")]
-        public void Run([TimerTrigger("0 30 16 * * *")]TimerInfo myTimer, ILogger log)
+        //public void Run([TimerTrigger("* * * * * *")]TimerInfo myTimer, ILogger log)
+        public void Run([TimerTrigger("0 30 16 * * *")] TimerInfo myTimer, ILogger log)
         {
             log.LogInformation($"C# Timer trigger function ChartFunction executed at: {DateTime.Now}");
 
             log.LogInformation("Calling sendDiscMessage method override for ChartURL");
 
             containerStorageExists = AzureBlobController.CheckContainerStorageExists(log);
-            blobChartUrlExists = CheckBlobExists(log, "chartURL.txt");
+            blobChartDataExists = CheckBlobExists(log, "chartData.json");
             
-            if (containerStorageExists && blobChartUrlExists)
+            if (containerStorageExists && blobChartDataExists)
             {
-                var chartURLBinary = LoadFromStorage(log, "chartURL.txt");
-                chartURL = chartURLBinary.ToString();
+                var chartDataBinary = LoadFromStorage(log, "chartData.json");
+                var chartData = JsonSerializer.Deserialize<Dictionary<string, List<double>>>(chartDataBinary);
+                
+                int count = 0;
+                foreach (var item in chartData)
+                {
+                    count = item.Value.Count;
+                    break;
+                }
+                chartURL = ChartBuilder.BuildChart(chartData, count, log);
             }
-            
+   
             log.LogInformation("ChartURL: " + chartURL);
             DiscordController.sendDiscMessage(chartURL, log);
         }

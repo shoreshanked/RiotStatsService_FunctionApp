@@ -157,6 +157,38 @@ namespace RiotStatsService_FunctionApp
             blobClient.Upload(new MemoryStream(Encoding.UTF8.GetBytes(blobContent)), overwrite: true);
         }
 
+        public static void StoreChartLists(List<List<double>> kdaMasterList, ILogger log)
+        {
+            log.LogInformation("Getting container");
+            var blobContainerClient = GetContainer(blobServiceClient, containerName, log);
+
+            log.LogInformation("Creating blob client");
+            var blobClient = blobContainerClient.GetBlobClient("/chartListData.json");
+
+            log.LogInformation("Creating blob content (chartListData)");
+            var blobContent = JsonSerializer.Serialize(kdaMasterList);
+
+            log.LogInformation("Uploading blob content (chartListData)");
+
+            blobClient.Upload(new MemoryStream(Encoding.UTF8.GetBytes(blobContent)), overwrite: true);
+        }
+   
+        public static void StoreChartData(Dictionary<string, List<double>> chartData, ILogger log)
+        {
+            log.LogInformation("Getting container");
+            var blobContainerClient = GetContainer(blobServiceClient, containerName, log);
+
+            log.LogInformation("Creating blob client");
+            var blobClient = blobContainerClient.GetBlobClient("/chartData.json");
+
+            log.LogInformation("Creating blob content (chartData)");
+            var blobContent = JsonSerializer.Serialize(chartData);
+
+            log.LogInformation("Uploading blob content (chartData)");
+
+            blobClient.Upload(new MemoryStream(Encoding.UTF8.GetBytes(blobContent)), overwrite: true);
+        }
+
         public static BlobContainerClient GetContainer(BlobServiceClient blobServiceClient, string containerName, ILogger log)
         {
             try

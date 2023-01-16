@@ -25,6 +25,7 @@ namespace RiotStatsService_FunctionApp.Classes
         public double[] data { get; set; }
         public int borderWidth { get; set; }
         public double lineTension { get; set; }
+        public string backgroundColor { get; set; }
     }
 
     public class Options
