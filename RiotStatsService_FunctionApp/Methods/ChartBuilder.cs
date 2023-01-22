@@ -145,7 +145,7 @@ namespace RiotStatsService_FunctionApp
             List<string> labelList = new List<string>();
             for (int count = 0; count < labelCount; count++)
             {
-                string label = string.Format("Week {0}", (count + 1).ToString());
+                string label = string.Format("Day {0}", (count + 1).ToString());
                 labelList.Add(label);
             }
 
@@ -181,8 +181,8 @@ namespace RiotStatsService_FunctionApp
             qc_title.display = true;
             qc_title.text = "Test Title - does this work?";
 
-            qc_ticks.suggestedMin = 0;
-            qc_ticks.suggestedMax = 10;
+            qc_ticks.suggestedMin = 3;
+            qc_ticks.suggestedMax = 3;
             //qc_ticks.beginAtZero = false;
             
             qc_yaxis.ticks = qc_ticks;

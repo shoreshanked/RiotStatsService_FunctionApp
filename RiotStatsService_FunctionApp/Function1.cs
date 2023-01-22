@@ -1,18 +1,13 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading;
-using System.Threading.Tasks;
-using Azure;
-using Azure.Storage.Blobs;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
 using RestSharp;
-using static RiotStatsService_FunctionApp.ChartFunction;
 using static RiotStatsService_FunctionApp.AzureBlobController;
-using System.Xml.Linq;
 using System.Text.Json;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace RiotStatsService_FunctionApp
 { 
@@ -20,9 +15,9 @@ namespace RiotStatsService_FunctionApp
     {
         RestClient client = new RestClient("https://euw1.api.riotgames.com");
         RestClient clientRegion = new RestClient("https://europe.api.riotgames.com");
-        string apiToken = Environment.GetEnvironmentVariable("RiotGamesAPIKey");
+        string apiToken = "";
         string allTimeStatsSet = Environment.GetEnvironmentVariable("AllTimeStatsSet");
-        
+
         public static bool isTest = true;
         private static bool containerStorageExists;
         public static bool blobHighScoreExists;
@@ -70,10 +65,11 @@ namespace RiotStatsService_FunctionApp
 
 
         [FunctionName("Function1")]
-        //public void Run([TimerTrigger("0 0 16 * * 1")]TimerInfo myTimer, ILogger log) // Dev
-        public void Run([TimerTrigger("0 0 16 * * *")] TimerInfo myTimer, ILogger log) //Live
+        //public async Task Run([TimerTrigger("* * * * * *")]TimerInfo myTimer, ILogger log) // Dev
+        public async Task Run([TimerTrigger("0 0 16 * * *")] TimerInfo myTimer, ILogger log) //Live
         {
             log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
+            await GetTokenAsync(log);
 
             // this only checks whether a container exists with the correct name 
             containerStorageExists = AzureBlobController.CheckContainerStorageExists(log);
@@ -98,8 +94,7 @@ namespace RiotStatsService_FunctionApp
             {
                 log.LogInformation("Storage has not been found in azure blob storage");
             }
-
-          
+               
             //Summoner info passed back to a dictionary for use later
             summonerResponseDict = SummonerController.getSummonerPuuid(summonerList, apiToken, client, log);
 
@@ -178,6 +173,14 @@ namespace RiotStatsService_FunctionApp
             //Clear all objects to prevent memory leaks
             log.LogInformation("Clearing all objects");
             resetObjects();  
+        }
+
+        public async Task GetTokenAsync(ILogger log)
+        {
+            log.LogInformation($"C# GetTokenAsync: {DateTime.Now}");
+
+            apiToken = await VaultController.ReturnVaultSecret(log);
+            //GetSecretWithAppRole();
         }
 
         public void resetObjects()
