@@ -6,6 +6,8 @@ using RiotStatsService_FunctionApp.Classes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -179,7 +181,7 @@ namespace RiotStatsService_FunctionApp
             qc_options.responsive = true;
 
             qc_title.display = true;
-            qc_title.text = "Test Title - does this work?";
+            qc_title.text = "10 Match rolling average KDA over time";
 
             qc_ticks.suggestedMin = 3;
             qc_ticks.suggestedMax = 3;
@@ -204,7 +206,13 @@ namespace RiotStatsService_FunctionApp
             log.LogInformation("Calling GetURL Method");
             URL = (qc.GetUrl());
 
-            return URL;
+
+            log.LogInformation("Calling tinyurl API");
+            Uri address = new Uri("http://tinyurl.com/api-create.php?url=" + URL);
+            WebClient client = new WebClient();
+            string tinyUrl = client.DownloadString(address);
+
+            return tinyUrl;
         }
     }
 }

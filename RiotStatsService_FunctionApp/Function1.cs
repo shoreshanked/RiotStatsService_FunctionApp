@@ -15,10 +15,10 @@ namespace RiotStatsService_FunctionApp
     {
         RestClient client = new RestClient("https://euw1.api.riotgames.com");
         RestClient clientRegion = new RestClient("https://europe.api.riotgames.com");
-        string apiToken = "";
+        string apiToken = Environment.GetEnvironmentVariable("Api_token_riot");
         string allTimeStatsSet = Environment.GetEnvironmentVariable("AllTimeStatsSet");
 
-        public static bool isTest = true;
+        public static bool isTest = false;
         private static bool containerStorageExists;
         public static bool blobHighScoreExists;
 
@@ -41,22 +41,17 @@ namespace RiotStatsService_FunctionApp
         Dictionary<string, List<double>> chartData = new Dictionary<string, List<double>>();
         //public static string chartURL = "";
 
-        //List Variables
-        List<string> summonerList = new List<string>()
+
+        Dictionary<string, string> accountIdDict = new Dictionary<string, string>()
         {
-            "Rick n Two Crows",
-            "The Master Queef",
-            "Up the Ashe",
-            "The Meshsiah",
-            "The Rum Ham",
-            "Ninjahobo"
+            {"Matt", "c8yttudPxzAkBHzXyTUtaNleX_TeO0SmivMM1QINy8yRJoLhz8-9fLdU" },
+            {"Will", "gr3eymOAL5IaSTHFpq8mjWwJAzGCLOLJYPUOIY0NV4n4TA" },
+            {"Tom", "hIt57sTtbbGxOKYbanL72yhhdSboRFDsUTVxOV1yQ_h5yQ" },
+            {"Mesh", "NEOs-epIGxhSfOE0oAKvJ4iQFOr2sYqkVAC2FBOxiETLyw" },
+            {"Jamie", "nL9NF-Q-C8oeiAETGatujj9AXaeJk6wbWhoRPr4YsaR7ag" },
+            {"Marc", "VAx_WHhDM1NKWHHicAPuKstuLmMWNoHRhv1C-AON1KbHIg" },
         };
 
-        //List<string> summonerList = new List<string>()
-        //{
-
-        //    "The Master Queef"
-        //};
 
         List<string> summonerPuuidList = new List<string>();
         List<KdaModel> kdaModelList = new List<KdaModel>();
@@ -65,11 +60,11 @@ namespace RiotStatsService_FunctionApp
 
 
         [FunctionName("Function1")]
-        //public async Task Run([TimerTrigger("* * * * * *")]TimerInfo myTimer, ILogger log) // Dev
+        //public async Task Run([TimerTrigger("* * 16 * * Sun")]TimerInfo myTimer, ILogger log) // Dev
         public async Task Run([TimerTrigger("0 0 16 * * *")] TimerInfo myTimer, ILogger log) //Live
         {
             log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
-            await GetTokenAsync(log);
+            //await GetTokenAsync(log);
 
             // this only checks whether a container exists with the correct name 
             containerStorageExists = AzureBlobController.CheckContainerStorageExists(log);
@@ -96,7 +91,7 @@ namespace RiotStatsService_FunctionApp
             }
                
             //Summoner info passed back to a dictionary for use later
-            summonerResponseDict = SummonerController.getSummonerPuuid(summonerList, apiToken, client, log);
+            summonerResponseDict = SummonerController.getSummonerPuuid(accountIdDict, apiToken, client, log);
 
             foreach(var summonerResponse in summonerResponseDict)
             {
@@ -189,7 +184,7 @@ namespace RiotStatsService_FunctionApp
             matchDataDictionary.Clear();
             kdaResultsDictionary.Clear();
             summonerResponseDict.Clear();
-            summonerList.Clear();
+            accountIdDict.Clear();
             summonerPuuidList.Clear();
             kdaModelList.Clear();
             matchIdList.Clear();

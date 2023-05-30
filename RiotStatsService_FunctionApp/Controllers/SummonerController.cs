@@ -8,16 +8,16 @@ namespace RiotStatsService_FunctionApp
     class SummonerController
     {
 
-        static public Dictionary<string, SummonerModel> getSummonerPuuid(List<String> summonerList, string apiToken, RestClient client, ILogger log)
+        static public Dictionary<string, SummonerModel> getSummonerPuuid(Dictionary<string, string> accountIdDict, string apiToken, RestClient client, ILogger log)
         {
             SummonerModel response = new SummonerModel();
             Dictionary<string, SummonerModel> summonerResponseDict = new Dictionary<string, SummonerModel>();
 
             
-            foreach (var summoner in summonerList)
+            foreach (var summoner in accountIdDict.Values)
             {
                 log.LogInformation("Getting summoner details from API for {0}", summoner);
-                var getSummoner = new RestRequest("/lol/summoner/v4/summoners/by-name/" + summoner, Method.Get);
+                var getSummoner = new RestRequest("/lol/summoner/v4/summoners/by-account/" + summoner, Method.Get);
                 getSummoner.AddHeader("X-Riot-Token", apiToken);
 
                 try
